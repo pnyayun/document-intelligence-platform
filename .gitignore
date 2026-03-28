@@ -18,3 +18,5 @@ Thumbs.db
 
 # Migrations (optional - some keep this, some don't)
 # migrations/
+
+uploads/
