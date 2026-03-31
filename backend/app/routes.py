@@ -4,8 +4,9 @@ from flask import Blueprint, jsonify, request, current_app
 from werkzeug.utils import secure_filename
 from .extensions import db
 from .models import Document, Chunk
-from .parser import allowed_file, extract_text, get_extension
+from .parser import allowed_file, extract_text
 from .chunker import chunk_text
+from .embedder import embed_chunks
 
 main = Blueprint('main', __name__)
 
@@ -29,7 +30,7 @@ def upload_document():
             "supported_types": "pdf, docx, txt, pptx, xlsx, md, rtf, html, csv"
         }), 400
 
-    # Save file securely
+    # Save file
     filename = secure_filename(file.filename)
     unique_filename = f"{uuid.uuid4()}_{filename}"
     upload_folder = current_app.config.get('UPLOAD_FOLDER', 'uploads')
@@ -44,31 +45,49 @@ def upload_document():
         os.remove(filepath)
         return jsonify({"error": f"Failed to extract text: {str(e)}"}), 500
 
-    # Save document to database
+    # Save document to PostgreSQL
     doc = Document(
         filename=filename,
         page_count=page_count,
         user_id=None
     )
     db.session.add(doc)
-    db.session.flush()  # Get doc.id before committing
+    db.session.flush()
 
-    # Chunk the text and save chunks
+    # Chunk and save to PostgreSQL
     chunks = chunk_text(text)
+    db_chunks = []
     for chunk in chunks:
         db_chunk = Chunk(
             document_id=doc.id,
             page=None,
             text=chunk['text'],
             token_count=chunk['token_count'],
-            vector_id=None  # Will be filled after Qdrant embedding
+            vector_id=None
         )
         db.session.add(db_chunk)
+        db_chunks.append(db_chunk)
+
+    db.session.flush()
+
+    # Embed and store in Qdrant
+    try:
+        qdrant_url = current_app.config.get('QDRANT_URL', 'http://localhost:6333')
+        collection_name = current_app.config.get('QDRANT_COLLECTION', 'documents')
+        vector_ids = embed_chunks(db_chunks, doc.id, qdrant_url, collection_name)
+
+        for db_chunk, vector_id in zip(db_chunks, vector_ids):
+            db_chunk.vector_id = vector_id
+
+    except Exception as e:
+        db.session.rollback()
+        os.remove(filepath)
+        return jsonify({"error": f"Failed to embed chunks: {str(e)}"}), 500
 
     db.session.commit()
 
     return jsonify({
-        "message": "Document uploaded and chunked successfully",
+        "message": "Document uploaded, chunked and embedded successfully",
         "document": doc.to_dict(),
         "chunks_created": len(chunks),
         "text_preview": text[:300] + '...' if len(text) > 300 else text
