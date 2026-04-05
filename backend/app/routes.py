@@ -114,3 +114,67 @@ def delete_document(doc_id):
     db.session.delete(doc)
     db.session.commit()
     return jsonify({"message": "Document deleted"}), 200
+
+@main.route('/api/query', methods=['POST'])
+def query_document():
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    question = data.get('question')
+    document_id = data.get('document_id')
+
+    if not question:
+        return jsonify({"error": "No question provided"}), 400
+
+    try:
+        qdrant_url = current_app.config.get('QDRANT_URL', 'http://localhost:6333')
+        collection_name = current_app.config.get('QDRANT_COLLECTION', 'documents')
+
+        from .embedder import search_similar_chunks
+        similar_chunks = search_similar_chunks(
+            query=question,
+            qdrant_url=qdrant_url,
+            collection_name=collection_name,
+            document_id=document_id,
+            top_k=5
+        )
+
+        if not similar_chunks:
+            return jsonify({"error": "No relevant chunks found"}), 404
+
+        # Build context from top chunks
+        context = "\n\n".join([chunk['text'] for chunk in similar_chunks])
+
+        # Save query to database
+        from .models import Query
+        import uuid
+        query_record = Query(
+            document_id=uuid.UUID(document_id) if document_id else None,
+            question=question,
+            answer=context,
+            chunks_used=[{
+                "chunk_id": c['chunk_id'],
+                "score": c['score'],
+                "text_preview": c['text'][:100]
+            } for c in similar_chunks]
+        )
+        db.session.add(query_record)
+        db.session.commit()
+
+        return jsonify({
+            "question": question,
+            "answer": context,
+            "chunks_used": similar_chunks,
+            "query_id": str(query_record.id)
+        }), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@main.route('/api/queries', methods=['GET'])
+def get_queries():
+    from .models import Query
+    queries = Query.query.order_by(Query.created_at.desc()).all()
+    return jsonify([q.to_dict() for q in queries]), 200
