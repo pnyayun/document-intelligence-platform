@@ -1,30 +1,45 @@
 import { useState } from 'react'
-import { Upload, FileText, CheckCircle, AlertCircle } from 'lucide-react'
+import { Upload, FileText, CheckCircle, AlertCircle, Loader } from 'lucide-react'
+import { uploadDocument } from '../api/index'
 
 export default function UploadPage() {
   const [file, setFile] = useState(null)
   const [dragging, setDragging] = useState(false)
   const [status, setStatus] = useState(null)
+  const [response, setResponse] = useState(null)
+  const [error, setError] = useState(null)
 
   const handleDrop = (e) => {
     e.preventDefault()
     setDragging(false)
     const dropped = e.dataTransfer.files[0]
-    if (dropped?.type === 'application/pdf') setFile(dropped)
+    if (dropped) setFile(dropped)
   }
 
   const handleUpload = async () => {
     if (!file) return
     setStatus('uploading')
-    setTimeout(() => setStatus('success'), 2000)
+    setError(null)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await uploadDocument(formData)
+      setResponse(res.data)
+      setStatus('success')
+    } catch (err) {
+      setError(err.response?.data?.error || 'Upload failed')
+      setStatus('error')
+    }
   }
 
   return (
     <div className="p-8 max-w-2xl mx-auto">
       <div className="mb-8">
         <h2 className="text-3xl font-bold text-white">Upload Document</h2>
-        <p className="text-gray-400 mt-1">Upload a PDF to analyze and query with AI</p>
+        <p className="text-gray-400 mt-1">Upload a document to analyze with AI</p>
       </div>
+
       <div
         onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
         onDragLeave={() => setDragging(false)}
@@ -34,11 +49,12 @@ export default function UploadPage() {
         }`}
       >
         <Upload className="mx-auto text-gray-500 mb-4" size={48} />
-        <p className="text-white font-medium mb-2">Drag and drop your PDF here</p>
-        <p className="text-gray-400 text-sm mb-6">or click to browse files</p>
+        <p className="text-white font-medium mb-2">Drag and drop your document here</p>
+        <p className="text-gray-400 text-sm mb-2">Supports PDF, DOCX, TXT, PPTX, XLSX, MD, CSV, HTML</p>
+        <p className="text-gray-500 text-xs mb-6">Max file size: 50MB</p>
         <input
           type="file"
-          accept=".pdf"
+          accept=".pdf,.docx,.txt,.pptx,.xlsx,.md,.csv,.html,.htm,.rtf"
           className="hidden"
           id="file-input"
           onChange={(e) => setFile(e.target.files[0])}
@@ -50,6 +66,7 @@ export default function UploadPage() {
           Browse Files
         </label>
       </div>
+
       {file && (
         <div className="mt-6 bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-center gap-4">
           <FileText className="text-blue-500" size={24} />
@@ -60,22 +77,30 @@ export default function UploadPage() {
           <button
             onClick={handleUpload}
             disabled={status === 'uploading'}
-            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-6 py-2 rounded-lg transition-colors"
+            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2"
           >
-            {status === 'uploading' ? 'Uploading...' : 'Upload'}
+            {status === 'uploading' ? (
+              <><Loader size={16} className="animate-spin" /> Uploading...</>
+            ) : 'Upload'}
           </button>
         </div>
       )}
-      {status === 'success' && (
-        <div className="mt-4 flex items-center gap-2 text-green-400 bg-green-500/10 border border-green-500/20 rounded-lg p-4">
-          <CheckCircle size={20} />
-          <p>Document uploaded successfully!</p>
+
+      {status === 'success' && response && (
+        <div className="mt-4 bg-green-500/10 border border-green-500/20 rounded-lg p-4">
+          <div className="flex items-center gap-2 text-green-400 mb-2">
+            <CheckCircle size={20} />
+            <p className="font-medium">Document uploaded successfully!</p>
+          </div>
+          <p className="text-gray-400 text-sm">Chunks created: {response.chunks_created}</p>
+          <p className="text-gray-400 text-sm mt-1">Preview: {response.text_preview?.slice(0, 150)}...</p>
         </div>
       )}
+
       {status === 'error' && (
         <div className="mt-4 flex items-center gap-2 text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg p-4">
           <AlertCircle size={20} />
-          <p>Upload failed. Please try again.</p>
+          <p>{error}</p>
         </div>
       )}
     </div>
