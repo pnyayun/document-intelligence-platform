@@ -77,13 +77,14 @@ def search_similar_chunks(query, qdrant_url, collection_name, document_id=None, 
             ]
         )
 
-    results = client.search(
+    from qdrant_client.models import QueryRequest
+    results = client.query_points(
         collection_name=collection_name,
-        query_vector=query_vector,
+        query=query_vector,
         query_filter=query_filter,
         limit=top_k,
         with_payload=True
-    )
+    ).points
 
     return [
         {

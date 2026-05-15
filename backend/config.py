@@ -14,3 +14,4 @@ class Config:
     MAX_CONTENT_LENGTH = 50 * 1024 * 1024
     QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
     QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "documents")
+    GROQ_API_KEY = os.getenv("GROQ_API_KEY")

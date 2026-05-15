@@ -30,7 +30,6 @@ def upload_document():
             "supported_types": "pdf, docx, txt, pptx, xlsx, md, rtf, html, csv"
         }), 400
 
-    # Save file
     filename = secure_filename(file.filename)
     unique_filename = f"{uuid.uuid4()}_{filename}"
     upload_folder = current_app.config.get('UPLOAD_FOLDER', 'uploads')
@@ -38,14 +37,12 @@ def upload_document():
     filepath = os.path.join(upload_folder, unique_filename)
     file.save(filepath)
 
-    # Extract text
     try:
         text, page_count = extract_text(filepath, filename)
     except Exception as e:
         os.remove(filepath)
         return jsonify({"error": f"Failed to extract text: {str(e)}"}), 500
 
-    # Save document to PostgreSQL
     doc = Document(
         filename=filename,
         page_count=page_count,
@@ -54,7 +51,6 @@ def upload_document():
     db.session.add(doc)
     db.session.flush()
 
-    # Chunk and save to PostgreSQL
     chunks = chunk_text(text)
     db_chunks = []
     for chunk in chunks:
@@ -70,7 +66,6 @@ def upload_document():
 
     db.session.flush()
 
-    # Embed and store in Qdrant
     try:
         qdrant_url = current_app.config.get('QDRANT_URL', 'http://localhost:6333')
         collection_name = current_app.config.get('QDRANT_COLLECTION', 'documents')
@@ -93,10 +88,12 @@ def upload_document():
         "text_preview": text[:300] + '...' if len(text) > 300 else text
     }), 201
 
+
 @main.route('/api/documents', methods=['GET'])
 def get_documents():
     documents = Document.query.order_by(Document.uploaded_at.desc()).all()
     return jsonify([doc.to_dict() for doc in documents]), 200
+
 
 @main.route('/api/documents/<doc_id>', methods=['GET'])
 def get_document(doc_id):
@@ -108,12 +105,14 @@ def get_document(doc_id):
         "total_chunks": len(chunks)
     }), 200
 
+
 @main.route('/api/documents/<doc_id>', methods=['DELETE'])
 def delete_document(doc_id):
     doc = Document.query.get_or_404(doc_id)
     db.session.delete(doc)
     db.session.commit()
     return jsonify({"message": "Document deleted"}), 200
+
 
 @main.route('/api/query', methods=['POST'])
 def query_document():
@@ -144,16 +143,34 @@ def query_document():
         if not similar_chunks:
             return jsonify({"error": "No relevant chunks found"}), 404
 
-        # Build context from top chunks
         context = "\n\n".join([chunk['text'] for chunk in similar_chunks])
 
-        # Save query to database
+        # Generate answer with Groq
+        from groq import Groq
+        groq_client = Groq(
+            api_key=current_app.config.get('GROQ_API_KEY')
+        )
+        response = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant answering questions about a document. Use ONLY the context provided to answer the question. If the answer is not in the context, say 'I couldn't find that information in the document.'"
+                },
+                {
+                    "role": "user",
+                    "content": f"Context:\n{context}\n\nQuestion: {question}\n\nAnswer:"
+                }
+            ],
+            max_tokens=1024
+        )
+        answer = response.choices[0].message.content
+
         from .models import Query
-        import uuid
         query_record = Query(
             document_id=uuid.UUID(document_id) if document_id else None,
             question=question,
-            answer=context,
+            answer=answer,
             chunks_used=[{
                 "chunk_id": c['chunk_id'],
                 "score": c['score'],
@@ -165,13 +182,14 @@ def query_document():
 
         return jsonify({
             "question": question,
-            "answer": context,
+            "answer": answer,
             "chunks_used": similar_chunks,
             "query_id": str(query_record.id)
         }), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @main.route('/api/queries', methods=['GET'])
 def get_queries():
