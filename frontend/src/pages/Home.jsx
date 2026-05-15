@@ -1,21 +1,23 @@
 import { useEffect, useState } from 'react'
-import { FileText, MessageSquare, History, Upload } from 'lucide-react'
+import { FileText, MessageSquare, Upload } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { getDocuments, getHistory } from '../api/index'
 
+const colorMap = {
+  blue:   { bg: 'bg-blue-500/10',   text: 'text-blue-500' },
+  purple: { bg: 'bg-purple-500/10', text: 'text-purple-500' },
+}
+
 export default function Home() {
   const navigate = useNavigate()
-  const [stats, setStats] = useState({
-    documents: 0,
-    queries: 0,
-  })
+  const [stats, setStats] = useState({ documents: 0, queries: 0 })
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
         const [docsRes, histRes] = await Promise.all([getDocuments(), getHistory()])
         setStats({ documents: docsRes.data.length, queries: histRes.data.length })
-      } catch (err) {
+      } catch {
         console.error('Failed to load stats')
       }
     }
@@ -23,8 +25,8 @@ export default function Home() {
   }, [])
 
   const statCards = [
-    { label: 'Documents', value: stats.documents, icon: FileText, color: 'blue' },
-    { label: 'Queries Asked', value: stats.queries, icon: MessageSquare, color: 'purple' },
+    { label: 'Documents',    value: stats.documents, icon: FileText,      color: 'blue'   },
+    { label: 'Queries Asked',value: stats.queries,   icon: MessageSquare, color: 'purple' },
   ]
 
   return (
@@ -42,8 +44,8 @@ export default function Home() {
                 <p className="text-gray-400 text-sm">{label}</p>
                 <p className="text-4xl font-bold text-white mt-1">{value}</p>
               </div>
-              <div className={`p-3 rounded-lg bg-${color}-500/10`}>
-                <Icon className={`text-${color}-500`} size={24} />
+              <div className={`p-3 rounded-lg ${colorMap[color].bg}`}>
+                <Icon className={colorMap[color].text} size={24} />
               </div>
             </div>
           </div>

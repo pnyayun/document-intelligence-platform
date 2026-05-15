@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { MessageSquare, FileText, Clock, Loader } from 'lucide-react'
+import { MessageSquare, Clock, Loader, AlertCircle } from 'lucide-react'
 import { getHistory } from '../api/index'
 
 export default function History() {
@@ -8,19 +8,18 @@ export default function History() {
   const [error, setError] = useState(null)
 
   useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const res = await getHistory()
+        setQueries(res.data)
+      } catch {
+        setError('Failed to load history')
+      } finally {
+        setLoading(false)
+      }
+    }
     fetchHistory()
   }, [])
-
-  const fetchHistory = async () => {
-    try {
-      const res = await getHistory()
-      setQueries(res.data)
-    } catch (err) {
-      setError('Failed to load history')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   if (loading) return (
     <div className="p-8 flex items-center justify-center">
@@ -32,11 +31,14 @@ export default function History() {
     <div className="p-8">
       <div className="mb-8">
         <h2 className="text-3xl font-bold text-white">Query History</h2>
-        <p className="text-gray-400 mt-1">{queries.length} previous quer{queries.length !== 1 ? 'ies' : 'y'}</p>
+        <p className="text-gray-400 mt-1">
+          {queries.length} previous quer{queries.length !== 1 ? 'ies' : 'y'}
+        </p>
       </div>
 
       {error && (
-        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 text-red-400 mb-6">
+        <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-lg p-4 text-red-400 mb-6">
+          <AlertCircle size={18} />
           {error}
         </div>
       )}
@@ -55,11 +57,9 @@ export default function History() {
                 <p className="text-white font-medium">{item.question}</p>
               </div>
               <p className="text-gray-400 text-sm ml-7 mb-4 line-clamp-3">{item.answer}</p>
-              <div className="flex items-center gap-4 ml-7 text-xs text-gray-500">
-                <span className="flex items-center gap-1">
-                  <Clock size={12} />
-                  {new Date(item.created_at).toLocaleString()}
-                </span>
+              <div className="flex items-center gap-1 ml-7 text-xs text-gray-500">
+                <Clock size={12} />
+                {new Date(item.created_at).toLocaleString()}
               </div>
             </div>
           ))}

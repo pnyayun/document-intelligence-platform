@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Send, Bot, User, Loader, FileText } from 'lucide-react'
+import { Send, Bot, User, Loader } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { askQuestion, getDocuments } from '../api/index'
 
@@ -15,23 +15,22 @@ export default function QueryPage() {
   const messagesEndRef = useRef(null)
 
   useEffect(() => {
+    const fetchDocuments = async () => {
+      try {
+        const res = await getDocuments()
+        setDocuments(res.data)
+      } catch {
+        console.error('Failed to load documents')
+      }
+    }
     fetchDocuments()
     const docId = searchParams.get('doc')
     if (docId) setSelectedDoc(docId)
-  }, [])
+  }, [searchParams])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
-
-  const fetchDocuments = async () => {
-    try {
-      const res = await getDocuments()
-      setDocuments(res.data)
-    } catch (err) {
-      console.error('Failed to load documents')
-    }
-  }
 
   const handleSend = async () => {
     if (!question.trim() || loading) return
@@ -84,8 +83,7 @@ export default function QueryPage() {
             <div className={`p-2 rounded-lg flex-shrink-0 ${msg.role === 'bot' ? 'bg-blue-500/10' : 'bg-gray-800'}`}>
               {msg.role === 'bot'
                 ? <Bot className="text-blue-500" size={18} />
-                : <User className="text-gray-400" size={18} />
-              }
+                : <User className="text-gray-400" size={18} />}
             </div>
             <div className={`max-w-2xl px-4 py-3 rounded-xl text-sm ${
               msg.role === 'bot'

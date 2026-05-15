@@ -9,11 +9,18 @@ export default function UploadPage() {
   const [response, setResponse] = useState(null)
   const [error, setError] = useState(null)
 
+  const handleFileSelect = (selected) => {
+    if (!selected) return
+    setFile(selected)
+    setStatus(null)
+    setError(null)
+    setResponse(null)
+  }
+
   const handleDrop = (e) => {
     e.preventDefault()
     setDragging(false)
-    const dropped = e.dataTransfer.files[0]
-    if (dropped) setFile(dropped)
+    handleFileSelect(e.dataTransfer.files[0])
   }
 
   const handleUpload = async () => {
@@ -27,6 +34,7 @@ export default function UploadPage() {
       const res = await uploadDocument(formData)
       setResponse(res.data)
       setStatus('success')
+      setFile(null)
     } catch (err) {
       setError(err.response?.data?.error || 'Upload failed')
       setStatus('error')
@@ -57,7 +65,7 @@ export default function UploadPage() {
           accept=".pdf,.docx,.txt,.pptx,.xlsx,.md,.csv,.html,.htm,.rtf"
           className="hidden"
           id="file-input"
-          onChange={(e) => setFile(e.target.files[0])}
+          onChange={(e) => handleFileSelect(e.target.files[0])}
         />
         <label
           htmlFor="file-input"
@@ -79,9 +87,9 @@ export default function UploadPage() {
             disabled={status === 'uploading'}
             className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2"
           >
-            {status === 'uploading' ? (
-              <><Loader size={16} className="animate-spin" /> Uploading...</>
-            ) : 'Upload'}
+            {status === 'uploading'
+              ? <><Loader size={16} className="animate-spin" /> Uploading...</>
+              : 'Upload'}
           </button>
         </div>
       )}

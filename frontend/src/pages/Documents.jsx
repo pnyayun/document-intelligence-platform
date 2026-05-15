@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { FileText, Trash2, MessageSquare, Loader } from 'lucide-react'
+import { FileText, Trash2, MessageSquare, Loader, AlertCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { getDocuments, deleteDocument } from '../api/index'
 
@@ -8,6 +8,7 @@ export default function Documents() {
   const [documents, setDocuments] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [deletingId, setDeletingId] = useState(null)
 
   useEffect(() => {
     fetchDocuments()
@@ -17,7 +18,7 @@ export default function Documents() {
     try {
       const res = await getDocuments()
       setDocuments(res.data)
-    } catch (err) {
+    } catch {
       setError('Failed to load documents')
     } finally {
       setLoading(false)
@@ -25,12 +26,14 @@ export default function Documents() {
   }
 
   const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this document?')) return
+    setDeletingId(id)
     try {
       await deleteDocument(id)
       setDocuments(docs => docs.filter(d => d.id !== id))
-    } catch (err) {
-      alert('Failed to delete document')
+    } catch {
+      setError('Failed to delete document')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -45,7 +48,9 @@ export default function Documents() {
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold text-white">Documents</h2>
-          <p className="text-gray-400 mt-1">{documents.length} document{documents.length !== 1 ? 's' : ''} uploaded</p>
+          <p className="text-gray-400 mt-1">
+            {documents.length} document{documents.length !== 1 ? 's' : ''} uploaded
+          </p>
         </div>
         <button
           onClick={() => navigate('/upload')}
@@ -56,7 +61,8 @@ export default function Documents() {
       </div>
 
       {error && (
-        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 text-red-400 mb-6">
+        <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-lg p-4 text-red-400 mb-6">
+          <AlertCircle size={18} />
           {error}
         </div>
       )}
@@ -95,9 +101,12 @@ export default function Documents() {
               </button>
               <button
                 onClick={() => handleDelete(doc.id)}
-                className="p-2 text-gray-500 hover:text-red-400 transition-colors"
+                disabled={deletingId === doc.id}
+                className="p-2 text-gray-500 hover:text-red-400 disabled:opacity-50 transition-colors"
               >
-                <Trash2 size={18} />
+                {deletingId === doc.id
+                  ? <Loader size={18} className="animate-spin" />
+                  : <Trash2 size={18} />}
               </button>
             </div>
           ))}
