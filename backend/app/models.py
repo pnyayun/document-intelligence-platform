@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from .extensions import db
 
+
 class Document(db.Model):
     __tablename__ = 'documents'
 
@@ -22,6 +23,9 @@ class Document(db.Model):
             "uploaded_at": self.uploaded_at.isoformat() if self.uploaded_at else None,
             "user_id": str(self.user_id) if self.user_id else None
         }
+
+    def __repr__(self):
+        return f"<Document {self.filename}>"
 
 
 class Chunk(db.Model):
@@ -44,12 +48,15 @@ class Chunk(db.Model):
             "vector_id": self.vector_id
         }
 
+    def __repr__(self):
+        return f"<Chunk {self.id} doc={self.document_id}>"
+
 
 class Query(db.Model):
     __tablename__ = 'queries'
 
     id = db.Column(db.UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    document_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('documents.id'), nullable=False)
+    document_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('documents.id'), nullable=True)
     question = db.Column(db.Text, nullable=False)
     answer = db.Column(db.Text, nullable=True)
     chunks_used = db.Column(db.JSON, nullable=True)
@@ -58,9 +65,12 @@ class Query(db.Model):
     def to_dict(self):
         return {
             "id": str(self.id),
-            "document_id": str(self.document_id),
+            "document_id": str(self.document_id) if self.document_id else None,
             "question": self.question,
             "answer": self.answer,
             "chunks_used": self.chunks_used,
             "created_at": self.created_at.isoformat() if self.created_at else None
         }
+
+    def __repr__(self):
+        return f"<Query {self.id}>"

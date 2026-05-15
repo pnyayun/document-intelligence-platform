@@ -1,46 +1,45 @@
+import uuid
 from sentence_transformers import SentenceTransformer
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
-    Distance, VectorParams, PointStruct
+    Distance, VectorParams, PointStruct,
+    Filter, FieldCondition, MatchValue
 )
-import uuid
 
 print("Loading embedding model...")
-model = SentenceTransformer('all-MiniLM-L6-v2')
+_model = SentenceTransformer('all-MiniLM-L6-v2')
 VECTOR_SIZE = 384
 print("Embedding model loaded!")
 
+_qdrant_clients = {}
+
+
 def get_qdrant_client(qdrant_url):
-    return QdrantClient(url=qdrant_url)
+    if qdrant_url not in _qdrant_clients:
+        _qdrant_clients[qdrant_url] = QdrantClient(url=qdrant_url)
+    return _qdrant_clients[qdrant_url]
+
 
 def ensure_collection_exists(client, collection_name):
-    existing = [c.name for c in client.get_collections().collections]
+    existing = {c.name for c in client.get_collections().collections}
     if collection_name not in existing:
         client.create_collection(
             collection_name=collection_name,
-            vectors_config=VectorParams(
-                size=VECTOR_SIZE,
-                distance=Distance.COSINE
-            )
+            vectors_config=VectorParams(size=VECTOR_SIZE, distance=Distance.COSINE)
         )
-        print(f"Created Qdrant collection: {collection_name}")
-    else:
-        print(f"Qdrant collection already exists: {collection_name}")
+
 
 def embed_chunks(chunks, document_id, qdrant_url, collection_name):
     client = get_qdrant_client(qdrant_url)
     ensure_collection_exists(client, collection_name)
 
     texts = [chunk.text for chunk in chunks]
-
-    print(f"Generating embeddings for {len(texts)} chunks...")
-    embeddings = model.encode(texts, show_progress_bar=False)
-    print("Embeddings generated!")
+    embeddings = _model.encode(texts, show_progress_bar=False)
 
     points = []
     vector_ids = []
 
-    for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
+    for chunk, embedding in zip(chunks, embeddings):
         vector_id = str(uuid.uuid4())
         vector_ids.append(vector_id)
         points.append(PointStruct(
@@ -54,20 +53,16 @@ def embed_chunks(chunks, document_id, qdrant_url, collection_name):
             }
         ))
 
-    client.upsert(
-        collection_name=collection_name,
-        points=points
-    )
-    print(f"Stored {len(points)} vectors in Qdrant!")
+    client.upsert(collection_name=collection_name, points=points)
     return vector_ids
+
 
 def search_similar_chunks(query, qdrant_url, collection_name, document_id=None, top_k=5):
     client = get_qdrant_client(qdrant_url)
-    query_vector = model.encode(query).tolist()
+    query_vector = _model.encode(query).tolist()
 
     query_filter = None
     if document_id:
-        from qdrant_client.models import Filter, FieldCondition, MatchValue
         query_filter = Filter(
             must=[
                 FieldCondition(
@@ -77,7 +72,6 @@ def search_similar_chunks(query, qdrant_url, collection_name, document_id=None, 
             ]
         )
 
-    from qdrant_client.models import QueryRequest
     results = client.query_points(
         collection_name=collection_name,
         query=query_vector,

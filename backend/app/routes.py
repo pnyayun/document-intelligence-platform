@@ -2,17 +2,48 @@ import os
 import uuid
 from flask import Blueprint, jsonify, request, current_app
 from werkzeug.utils import secure_filename
+from groq import Groq
 from .extensions import db
-from .models import Document, Chunk
+from .models import Document, Chunk, Query
 from .parser import allowed_file, extract_text
 from .chunker import chunk_text
-from .embedder import embed_chunks
+from .embedder import embed_chunks, search_similar_chunks
 
 main = Blueprint('main', __name__)
+
+
+def get_groq_client():
+    return Groq(api_key=current_app.config.get('GROQ_API_KEY'))
+
+
+def generate_answer(context, question):
+    client = get_groq_client()
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        max_tokens=1024,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are a helpful assistant answering questions about a document. "
+                    "Use ONLY the context provided to answer the question. "
+                    "If the answer is not in the context, say "
+                    "'I couldn't find that information in the document.'"
+                )
+            },
+            {
+                "role": "user",
+                "content": f"Context:\n{context}\n\nQuestion: {question}\n\nAnswer:"
+            }
+        ]
+    )
+    return response.choices[0].message.content
+
 
 @main.route('/api/health', methods=['GET'])
 def health_check():
     return jsonify({"status": "Flask is running!"}), 200
+
 
 @main.route('/api/documents/upload', methods=['POST'])
 def upload_document():
@@ -21,7 +52,7 @@ def upload_document():
 
     file = request.files['file']
 
-    if file.filename == '':
+    if not file.filename:
         return jsonify({"error": "No file selected"}), 400
 
     if not allowed_file(file.filename):
@@ -31,42 +62,31 @@ def upload_document():
         }), 400
 
     filename = secure_filename(file.filename)
-    unique_filename = f"{uuid.uuid4()}_{filename}"
     upload_folder = current_app.config.get('UPLOAD_FOLDER', 'uploads')
     os.makedirs(upload_folder, exist_ok=True)
-    filepath = os.path.join(upload_folder, unique_filename)
+    filepath = os.path.join(upload_folder, f"{uuid.uuid4()}_{filename}")
     file.save(filepath)
 
     try:
         text, page_count = extract_text(filepath, filename)
-    except Exception as e:
-        os.remove(filepath)
-        return jsonify({"error": f"Failed to extract text: {str(e)}"}), 500
 
-    doc = Document(
-        filename=filename,
-        page_count=page_count,
-        user_id=None
-    )
-    db.session.add(doc)
-    db.session.flush()
+        doc = Document(filename=filename, page_count=page_count)
+        db.session.add(doc)
+        db.session.flush()
 
-    chunks = chunk_text(text)
-    db_chunks = []
-    for chunk in chunks:
-        db_chunk = Chunk(
-            document_id=doc.id,
-            page=None,
-            text=chunk['text'],
-            token_count=chunk['token_count'],
-            vector_id=None
-        )
-        db.session.add(db_chunk)
-        db_chunks.append(db_chunk)
+        chunks = chunk_text(text)
+        db_chunks = []
+        for chunk in chunks:
+            db_chunk = Chunk(
+                document_id=doc.id,
+                text=chunk['text'],
+                token_count=chunk['token_count']
+            )
+            db.session.add(db_chunk)
+            db_chunks.append(db_chunk)
 
-    db.session.flush()
+        db.session.flush()
 
-    try:
         qdrant_url = current_app.config.get('QDRANT_URL', 'http://localhost:6333')
         collection_name = current_app.config.get('QDRANT_COLLECTION', 'documents')
         vector_ids = embed_chunks(db_chunks, doc.id, qdrant_url, collection_name)
@@ -74,12 +94,13 @@ def upload_document():
         for db_chunk, vector_id in zip(db_chunks, vector_ids):
             db_chunk.vector_id = vector_id
 
+        db.session.commit()
+
     except Exception as e:
         db.session.rollback()
-        os.remove(filepath)
-        return jsonify({"error": f"Failed to embed chunks: {str(e)}"}), 500
-
-    db.session.commit()
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        return jsonify({"error": str(e)}), 500
 
     return jsonify({
         "message": "Document uploaded, chunked and embedded successfully",
@@ -117,7 +138,6 @@ def delete_document(doc_id):
 @main.route('/api/query', methods=['POST'])
 def query_document():
     data = request.get_json()
-
     if not data:
         return jsonify({"error": "No data provided"}), 400
 
@@ -131,7 +151,6 @@ def query_document():
         qdrant_url = current_app.config.get('QDRANT_URL', 'http://localhost:6333')
         collection_name = current_app.config.get('QDRANT_COLLECTION', 'documents')
 
-        from .embedder import search_similar_chunks
         similar_chunks = search_similar_chunks(
             query=question,
             qdrant_url=qdrant_url,
@@ -144,29 +163,8 @@ def query_document():
             return jsonify({"error": "No relevant chunks found"}), 404
 
         context = "\n\n".join([chunk['text'] for chunk in similar_chunks])
+        answer = generate_answer(context, question)
 
-        # Generate answer with Groq
-        from groq import Groq
-        groq_client = Groq(
-            api_key=current_app.config.get('GROQ_API_KEY')
-        )
-        response = groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a helpful assistant answering questions about a document. Use ONLY the context provided to answer the question. If the answer is not in the context, say 'I couldn't find that information in the document.'"
-                },
-                {
-                    "role": "user",
-                    "content": f"Context:\n{context}\n\nQuestion: {question}\n\nAnswer:"
-                }
-            ],
-            max_tokens=1024
-        )
-        answer = response.choices[0].message.content
-
-        from .models import Query
         query_record = Query(
             document_id=uuid.UUID(document_id) if document_id else None,
             question=question,
@@ -193,6 +191,5 @@ def query_document():
 
 @main.route('/api/queries', methods=['GET'])
 def get_queries():
-    from .models import Query
     queries = Query.query.order_by(Query.created_at.desc()).all()
     return jsonify([q.to_dict() for q in queries]), 200
