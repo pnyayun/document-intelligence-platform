@@ -193,3 +193,10 @@ def query_document():
 def get_queries():
     queries = Query.query.order_by(Query.created_at.desc()).all()
     return jsonify([q.to_dict() for q in queries]), 200
+
+@main.route('/api/queries/<query_id>', methods=['DELETE'])
+def delete_query(query_id):
+    query = Query.query.get_or_404(query_id)
+    db.session.delete(query)
+    db.session.commit()
+    return jsonify({"message": "Query deleted"}), 200

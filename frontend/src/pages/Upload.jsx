@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Upload, FileText, CheckCircle, AlertCircle, Loader } from 'lucide-react'
+import { Upload, FileText, CheckCircle, AlertCircle, Loader, X } from 'lucide-react'
 import { uploadDocument } from '../api/index'
 
 export default function UploadPage() {
@@ -27,7 +27,6 @@ export default function UploadPage() {
     if (!file) return
     setStatus('uploading')
     setError(null)
-
     try {
       const formData = new FormData()
       formData.append('file', file)
@@ -36,79 +35,197 @@ export default function UploadPage() {
       setStatus('success')
       setFile(null)
     } catch (err) {
-      setError(err.response?.data?.error || 'Upload failed')
+      setError(err.response?.data?.error || 'Upload failed. Please try again.')
       setStatus('error')
     }
   }
 
   return (
-    <div className="p-8 max-w-2xl mx-auto">
-      <div className="mb-8">
-        <h2 className="text-3xl font-bold text-white">Upload Document</h2>
-        <p className="text-gray-400 mt-1">Upload a document to analyze with AI</p>
+    <div style={{ padding: '40px 48px', maxWidth: 680, margin: '0 auto' }}>
+
+      {/* Header */}
+      <div className="animate-fade-up" style={{ marginBottom: 32 }}>
+        <h2 style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
+          Upload Document
+        </h2>
+        <p style={{ color: 'var(--text-secondary)', fontSize: 15 }}>
+          Upload a file to analyze and query with AI.
+        </p>
       </div>
 
+      {/* Drop Zone */}
       <div
+        className="animate-fade-up"
         onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
         onDragLeave={() => setDragging(false)}
         onDrop={handleDrop}
-        className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors ${
-          dragging ? 'border-blue-500 bg-blue-500/10' : 'border-gray-700 hover:border-gray-500'
-        }`}
+        style={{
+          border: `2px dashed ${dragging ? 'var(--accent)' : 'var(--border-strong)'}`,
+          borderRadius: 'var(--radius-lg)',
+          padding: '56px 40px',
+          textAlign: 'center',
+          backgroundColor: dragging ? 'var(--accent-light)' : 'var(--bg-surface)',
+          transition: 'all 0.2s ease',
+          cursor: 'pointer',
+        }}
+        onClick={() => document.getElementById('file-input').click()}
       >
-        <Upload className="mx-auto text-gray-500 mb-4" size={48} />
-        <p className="text-white font-medium mb-2">Drag and drop your document here</p>
-        <p className="text-gray-400 text-sm mb-2">Supports PDF, DOCX, TXT, PPTX, XLSX, MD, CSV, HTML</p>
-        <p className="text-gray-500 text-xs mb-6">Max file size: 50MB</p>
+        <div style={{
+          width: 56, height: 56,
+          borderRadius: 14,
+          backgroundColor: 'var(--accent-light)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          margin: '0 auto 16px',
+        }}>
+          <Upload size={26} color="var(--accent)" />
+        </div>
+        <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>
+          Drag and drop your file here
+        </p>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>
+          PDF, DOCX, TXT, PPTX, XLSX, MD, CSV, HTML supported
+        </p>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 20 }}>
+          Maximum file size: 50MB
+        </p>
+        <div style={{
+          display: 'inline-block',
+          padding: '8px 20px',
+          borderRadius: 'var(--radius-sm)',
+          border: '1px solid var(--border-strong)',
+          backgroundColor: 'var(--bg-subtle)',
+          fontSize: 13,
+          fontWeight: 500,
+          color: 'var(--text-primary)',
+          cursor: 'pointer',
+          transition: 'all 0.15s ease',
+        }}>
+          Browse Files
+        </div>
         <input
           type="file"
           accept=".pdf,.docx,.txt,.pptx,.xlsx,.md,.csv,.html,.htm,.rtf"
-          className="hidden"
           id="file-input"
+          style={{ display: 'none' }}
           onChange={(e) => handleFileSelect(e.target.files[0])}
         />
-        <label
-          htmlFor="file-input"
-          className="bg-gray-800 hover:bg-gray-700 text-white px-6 py-2 rounded-lg cursor-pointer transition-colors"
-        >
-          Browse Files
-        </label>
       </div>
 
+      {/* Selected File */}
       {file && (
-        <div className="mt-6 bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-center gap-4">
-          <FileText className="text-blue-500" size={24} />
-          <div className="flex-1">
-            <p className="text-white font-medium">{file.name}</p>
-            <p className="text-gray-400 text-sm">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+        <div
+          className="animate-fade-up"
+          style={{
+            marginTop: 16,
+            backgroundColor: 'var(--bg-surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius)',
+            padding: '16px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 14,
+            boxShadow: 'var(--shadow-sm)',
+          }}
+        >
+          <div style={{
+            width: 40, height: 40,
+            borderRadius: 10,
+            backgroundColor: 'var(--accent-light)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            <FileText size={20} color="var(--accent)" />
           </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {file.name}
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+              {(file.size / 1024 / 1024).toFixed(2)} MB
+            </p>
+          </div>
+          <button
+            onClick={() => handleFileSelect(null) || setFile(null)}
+            style={{
+              width: 28, height: 28,
+              borderRadius: 6,
+              border: '1px solid var(--border)',
+              backgroundColor: 'transparent',
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <X size={14} />
+          </button>
           <button
             onClick={handleUpload}
             disabled={status === 'uploading'}
-            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2"
+            style={{
+              padding: '8px 20px',
+              borderRadius: 'var(--radius-sm)',
+              border: 'none',
+              backgroundColor: 'var(--accent)',
+              color: 'white',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: status === 'uploading' ? 'not-allowed' : 'pointer',
+              opacity: status === 'uploading' ? 0.7 : 1,
+              display: 'flex', alignItems: 'center', gap: 8,
+              transition: 'all 0.15s ease',
+              flexShrink: 0,
+            }}
           >
             {status === 'uploading'
-              ? <><Loader size={16} className="animate-spin" /> Uploading...</>
+              ? <><Loader size={14} className="animate-spin" /> Uploading...</>
               : 'Upload'}
           </button>
         </div>
       )}
 
+      {/* Success */}
       {status === 'success' && response && (
-        <div className="mt-4 bg-green-500/10 border border-green-500/20 rounded-lg p-4">
-          <div className="flex items-center gap-2 text-green-400 mb-2">
-            <CheckCircle size={20} />
-            <p className="font-medium">Document uploaded successfully!</p>
+        <div
+          className="animate-fade-up"
+          style={{
+            marginTop: 16,
+            backgroundColor: 'var(--success-light)',
+            border: '1px solid var(--success)',
+            borderRadius: 'var(--radius)',
+            padding: '16px 20px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <CheckCircle size={18} color="var(--success)" />
+            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--success)' }}>
+              Document uploaded successfully!
+            </p>
           </div>
-          <p className="text-gray-400 text-sm">Chunks created: {response.chunks_created}</p>
-          <p className="text-gray-400 text-sm mt-1">Preview: {response.text_preview?.slice(0, 150)}...</p>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>
+            {response.chunks_created} chunks created and embedded
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+            Preview: {response.text_preview?.slice(0, 180)}...
+          </p>
         </div>
       )}
 
+      {/* Error */}
       {status === 'error' && (
-        <div className="mt-4 flex items-center gap-2 text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg p-4">
-          <AlertCircle size={20} />
-          <p>{error}</p>
+        <div
+          className="animate-fade-up"
+          style={{
+            marginTop: 16,
+            backgroundColor: 'var(--error-light)',
+            border: '1px solid var(--error)',
+            borderRadius: 'var(--radius)',
+            padding: '16px 20px',
+            display: 'flex', alignItems: 'center', gap: 10,
+          }}
+        >
+          <AlertCircle size={18} color="var(--error)" />
+          <p style={{ fontSize: 13, color: 'var(--error)' }}>{error}</p>
         </div>
       )}
     </div>

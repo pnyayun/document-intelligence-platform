@@ -1,1 +1,97 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap');
+
+/* ── Light Theme (default) ── */
+:root {
+  --bg-base:        #FAFAF8;
+  --bg-surface:     #FFFFFF;
+  --bg-subtle:      #F4F4F1;
+  --bg-hover:       #EFEFEB;
+  --border:         #E8E8E4;
+  --border-strong:  #D4D4CF;
+  --text-primary:   #1C1C1E;
+  --text-secondary: #6B6B6B;
+  --text-muted:     #A0A0A0;
+  --accent:         #4F46E5;
+  --accent-light:   #EEF2FF;
+  --accent-hover:   #4338CA;
+  --accent-text:    #FFFFFF;
+  --success:        #16A34A;
+  --success-light:  #F0FDF4;
+  --error:          #DC2626;
+  --error-light:    #FEF2F2;
+  --shadow-sm:      0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md:      0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+  --shadow-lg:      0 8px 24px rgba(0,0,0,0.10), 0 4px 8px rgba(0,0,0,0.04);
+  --radius-sm:      8px;
+  --radius:         12px;
+  --radius-lg:      16px;
+}
+
+/* ── Dark Theme ── */
+:root.dark {
+  --bg-base:        #111110;
+  --bg-surface:     #1C1C1A;
+  --bg-subtle:      #242422;
+  --bg-hover:       #2C2C2A;
+  --border:         #2E2E2C;
+  --border-strong:  #3E3E3C;
+  --text-primary:   #EDEDEB;
+  --text-secondary: #A0A09E;
+  --text-muted:     #6B6B69;
+  --accent:         #6366F1;
+  --accent-light:   #1E1B4B;
+  --accent-hover:   #818CF8;
+  --accent-text:    #FFFFFF;
+  --success:        #22C55E;
+  --success-light:  #052E16;
+  --error:          #F87171;
+  --error-light:    #2D0A0A;
+  --shadow-sm:      0 1px 3px rgba(0,0,0,0.3);
+  --shadow-md:      0 4px 12px rgba(0,0,0,0.4);
+  --shadow-lg:      0 8px 24px rgba(0,0,0,0.5);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+h1, h2, h3, h4 {
+  font-family: 'Sora', sans-serif;
+  letter-spacing: -0.02em;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.animate-fade-up { animation: fadeUp 0.4s ease both; }
+.animate-fade-in { animation: fadeIn 0.3s ease both; }
+.animate-spin    { animation: spin 0.8s linear infinite; }
+
+.stagger > *:nth-child(1) { animation-delay: 0.05s; }
+.stagger > *:nth-child(2) { animation-delay: 0.10s; }
+.stagger > *:nth-child(3) { animation-delay: 0.15s; }
+.stagger > *:nth-child(4) { animation-delay: 0.20s; }
+.stagger > *:nth-child(5) { animation-delay: 0.25s; }

@@ -17,5 +17,6 @@ export const deleteDocument = (id) => api.delete(`/documents/${id}`)
 export const askQuestion = (documentId, question) =>
   api.post('/query', { document_id: documentId, question })
 export const getHistory = () => api.get('/queries')
+export const deleteQuery = (id) => api.delete(`/queries/${id}`)
 
 export default api

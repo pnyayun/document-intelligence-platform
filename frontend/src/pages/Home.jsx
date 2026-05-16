@@ -1,12 +1,7 @@
 import { useEffect, useState } from 'react'
-import { FileText, MessageSquare, Upload } from 'lucide-react'
+import { FileText, MessageSquare, Upload, ArrowRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { getDocuments, getHistory } from '../api/index'
-
-const colorMap = {
-  blue:   { bg: 'bg-blue-500/10',   text: 'text-blue-500' },
-  purple: { bg: 'bg-purple-500/10', text: 'text-purple-500' },
-}
 
 export default function Home() {
   const navigate = useNavigate()
@@ -25,50 +20,149 @@ export default function Home() {
   }, [])
 
   const statCards = [
-    { label: 'Documents',    value: stats.documents, icon: FileText,      color: 'blue'   },
-    { label: 'Queries Asked',value: stats.queries,   icon: MessageSquare, color: 'purple' },
+    { label: 'Documents Uploaded', value: stats.documents, icon: FileText,      sub: 'Total files in your library' },
+    { label: 'Questions Asked',    value: stats.queries,   icon: MessageSquare, sub: 'Queries across all documents' },
+  ]
+
+  const quickActions = [
+    {
+      title: 'Upload a Document',
+      description: 'Add a PDF, Word doc, spreadsheet, or any supported file to your library.',
+      icon: Upload,
+      action: () => navigate('/upload'),
+      label: 'Upload now',
+      accent: true,
+    },
+    {
+      title: 'Ask AI a Question',
+      description: 'Select a document and get instant answers powered by your content.',
+      icon: MessageSquare,
+      action: () => navigate('/query'),
+      label: 'Start asking',
+      accent: false,
+    },
   ]
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h2 className="text-3xl font-bold text-white">Dashboard</h2>
-        <p className="text-gray-400 mt-1">Welcome to your Document Intelligence Platform</p>
+    <div style={{ padding: '40px 48px', maxWidth: 900, margin: '0 auto' }}>
+
+      {/* Header */}
+      <div className="animate-fade-up" style={{ marginBottom: 40 }}>
+        <h2 style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
+          Welcome back 👋
+        </h2>
+        <p style={{ color: 'var(--text-secondary)', fontSize: 15 }}>
+          Your document intelligence workspace — upload, search, and ask.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        {statCards.map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">{label}</p>
-                <p className="text-4xl font-bold text-white mt-1">{value}</p>
+      {/* Stat Cards */}
+      <div className="stagger" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 40 }}>
+        {statCards.map(({ label, value, icon: Icon, sub }) => (
+          <div
+            key={label}
+            className="animate-fade-up"
+            style={{
+              backgroundColor: 'var(--bg-surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-lg)',
+              padding: '24px 28px',
+              boxShadow: 'var(--shadow-sm)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 20,
+            }}
+          >
+            <div style={{
+              width: 48, height: 48,
+              borderRadius: 12,
+              backgroundColor: 'var(--accent-light)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+            }}>
+              <Icon size={22} color="var(--accent)" />
+            </div>
+            <div>
+              <div style={{ fontSize: 32, fontWeight: 700, fontFamily: 'Sora, sans-serif', color: 'var(--text-primary)', lineHeight: 1.1 }}>
+                {value}
               </div>
-              <div className={`p-3 rounded-lg ${colorMap[color].bg}`}>
-                <Icon className={colorMap[color].text} size={24} />
-              </div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', marginTop: 4 }}>{label}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{sub}</div>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 text-center">
-        <Upload className="mx-auto text-blue-500 mb-4" size={48} />
-        <h3 className="text-xl font-semibold text-white mb-2">Get Started</h3>
-        <p className="text-gray-400 mb-6">Upload a document to start asking AI-powered questions</p>
-        <div className="flex gap-4 justify-center">
-          <button
-            onClick={() => navigate('/upload')}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-          >
-            Upload Document
-          </button>
-          <button
-            onClick={() => navigate('/query')}
-            className="bg-gray-800 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-          >
-            Ask AI
-          </button>
+      {/* Quick Actions */}
+      <div style={{ marginBottom: 12 }}>
+        <h3 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
+          Quick Actions
+        </h3>
+        <div className="stagger" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          {quickActions.map(({ title, description, icon: Icon, action, label, accent }) => (
+            <div
+              key={title}
+              className="animate-fade-up"
+              style={{
+                backgroundColor: accent ? 'var(--accent)' : 'var(--bg-surface)',
+                border: `1px solid ${accent ? 'transparent' : 'var(--border)'}`,
+                borderRadius: 'var(--radius-lg)',
+                padding: '28px',
+                boxShadow: accent ? '0 4px 16px rgba(79,70,229,0.25)' : 'var(--shadow-sm)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12,
+                cursor: 'pointer',
+                transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+              }}
+              onClick={action}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'translateY(-2px)'
+                e.currentTarget.style.boxShadow = accent
+                  ? '0 8px 24px rgba(79,70,229,0.35)'
+                  : 'var(--shadow-md)'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'translateY(0)'
+                e.currentTarget.style.boxShadow = accent
+                  ? '0 4px 16px rgba(79,70,229,0.25)'
+                  : 'var(--shadow-sm)'
+              }}
+            >
+              <div style={{
+                width: 40, height: 40,
+                borderRadius: 10,
+                backgroundColor: accent ? 'rgba(255,255,255,0.2)' : 'var(--accent-light)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Icon size={20} color={accent ? 'white' : 'var(--accent)'} />
+              </div>
+              <div>
+                <div style={{
+                  fontSize: 15, fontWeight: 600,
+                  color: accent ? 'white' : 'var(--text-primary)',
+                  marginBottom: 6,
+                }}>
+                  {title}
+                </div>
+                <div style={{
+                  fontSize: 13,
+                  color: accent ? 'rgba(255,255,255,0.75)' : 'var(--text-secondary)',
+                  lineHeight: 1.5,
+                }}>
+                  {description}
+                </div>
+              </div>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                fontSize: 13, fontWeight: 600,
+                color: accent ? 'white' : 'var(--accent)',
+                marginTop: 4,
+              }}>
+                {label} <ArrowRight size={14} />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
